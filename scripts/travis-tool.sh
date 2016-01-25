@@ -23,7 +23,7 @@ PANDOC_URL="https://s3.amazonaws.com/rstudio-buildtools/pandoc-${PANDOC_VERSION}
 # root path.
 PATH="${PATH}:/usr/texbin"
 
-R_BUILD_ARGS=${R_BUILD_ARGS-"--no-build-vignettes --no-manual"}
+R_BUILD_ARGS=${R_BUILD_ARGS-"--no-manual"}
 R_CHECK_ARGS=${R_CHECK_ARGS-"--no-build-vignettes --no-manual --as-cran"}
 
 R_USE_BIOC_CMDS="source('${BIOC}');"\
@@ -49,7 +49,7 @@ Bootstrap() {
 InstallPandoc() {
     local os_path="$1"
     mkdir -p "${PANDOC_DIR}"
-    wget /tmp/pandoc-${PANDOC_VERSION}.zip ${PANDOC_URL}
+    wget -O /tmp/pandoc-${PANDOC_VERSION}.zip ${PANDOC_URL}
     unzip -j /tmp/pandoc-${PANDOC_VERSION}.zip "pandoc-${PANDOC_VERSION}/${os_path}/pandoc" -d "${PANDOC_DIR}"
     chmod +x "${PANDOC_DIR}/pandoc"
     ln -s "${PANDOC_DIR}/pandoc" /usr/local/bin
