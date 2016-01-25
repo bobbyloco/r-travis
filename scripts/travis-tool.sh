@@ -52,34 +52,34 @@ InstallPandoc() {
     curl -o /tmp/pandoc-${PANDOC_VERSION}.zip ${PANDOC_URL}
     unzip -j /tmp/pandoc-${PANDOC_VERSION}.zip "pandoc-${PANDOC_VERSION}/${os_path}/pandoc" -d "${PANDOC_DIR}"
     chmod +x "${PANDOC_DIR}/pandoc"
-    sudo ln -s "${PANDOC_DIR}/pandoc" /usr/local/bin
+    ln -s "${PANDOC_DIR}/pandoc" /usr/local/bin
     unzip -j /tmp/pandoc-${PANDOC_VERSION}.zip "pandoc-${PANDOC_VERSION}/${os_path}/pandoc-citeproc" -d "${PANDOC_DIR}"
     chmod +x "${PANDOC_DIR}/pandoc-citeproc"
-    sudo ln -s "${PANDOC_DIR}/pandoc-citeproc" /usr/local/bin
+    ln -s "${PANDOC_DIR}/pandoc-citeproc" /usr/local/bin
 }
 
 BootstrapLinux() {
     # Set up our CRAN mirror.
-    sudo add-apt-repository "deb ${CRAN}/bin/linux/ubuntu $(lsb_release -cs)/"
-    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
+    add-apt-repository "deb ${CRAN}/bin/linux/ubuntu $(lsb_release -cs)/"
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
 
     # Add marutter's c2d4u repository.
-    sudo add-apt-repository -y "ppa:marutter/rrutter"
-    sudo add-apt-repository -y "ppa:marutter/c2d4u"
+    add-apt-repository -y "ppa:marutter/rrutter"
+    add-apt-repository -y "ppa:marutter/c2d4u"
 
     # Update after adding all repositories.  Retry several times to work around
     # flaky connection to Launchpad PPAs.
-    Retry sudo apt-get update -qq
+    Retry apt-get update -qq
 
     # Install an R development environment. qpdf is also needed for
     # --as-cran checks:
     #   https://stat.ethz.ch/pipermail/r-help//2012-September/335676.html
-    Retry sudo apt-get install -y --no-install-recommends r-base-dev r-recommended qpdf
+    Retry apt-get install -y --no-install-recommends r-base-dev r-recommended qpdf
 
     # Change permissions for /usr/local/lib/R/site-library
     # This should really be via 'staff adduser travis staff'
     # but that may affect only the next shell
-    sudo chmod 2777 /usr/local/lib/R /usr/local/lib/R/site-library
+    chmod 2777 /usr/local/lib/R /usr/local/lib/R/site-library
 
     # Process options
     BootstrapLinuxOptions
@@ -88,9 +88,9 @@ BootstrapLinux() {
 BootstrapLinuxOptions() {
     if [[ -n "$BOOTSTRAP_LATEX" ]]; then
         # We add a backports PPA for more recent TeX packages.
-        sudo add-apt-repository -y "ppa:texlive-backports/ppa"
+        add-apt-repository -y "ppa:texlive-backports/ppa"
 
-        Retry sudo apt-get install -y --no-install-recommends \
+        Retry apt-get install -y --no-install-recommends \
             texlive-base texlive-latex-base texlive-generic-recommended \
             texlive-fonts-recommended texlive-fonts-extra \
             texlive-extra-utils texlive-latex-recommended texlive-latex-extra \
@@ -106,7 +106,7 @@ BootstrapMac() {
     wget ${CRAN}/bin/macosx/R-latest.pkg  -O /tmp/R-latest.pkg
 
     echo "Installing OS X binary package for R"
-    sudo installer -pkg "/tmp/R-latest.pkg" -target /
+    installer -pkg "/tmp/R-latest.pkg" -target /
     rm "/tmp/R-latest.pkg"
 
     # Process options
@@ -120,13 +120,13 @@ BootstrapMacOptions() {
         wget http://ctan.math.utah.edu/ctan/tex-archive/systems/mac/mactex/$MACTEX -O "/tmp/$MACTEX"
 
         echo "Installing OS X binary package for MacTeX"
-        sudo installer -pkg "/tmp/$MACTEX" -target /
+        installer -pkg "/tmp/$MACTEX" -target /
         rm "/tmp/$MACTEX"
         # We need a few more packages than the basic package provides; this
         # post saved me so much pain:
         #   https://stat.ethz.ch/pipermail/r-sig-mac/2010-May/007399.html
-        sudo tlmgr update --self
-        sudo tlmgr install inconsolata upquote courier courier-scaled helvetic
+        tlmgr update --self
+        tlmgr install inconsolata upquote courier courier-scaled helvetic
     fi
     if [[ -n "$BOOTSTRAP_PANDOC" ]]; then
         InstallPandoc 'mac'
@@ -136,7 +136,7 @@ BootstrapMacOptions() {
 EnsureDevtools() {
     if ! Rscript -e 'if (!("devtools" %in% rownames(installed.packages()))) q(status=1)' ; then
         # Install devtools and testthat.
-        RInstall devtools testthat
+        RBinaryInstall devtools testthat
     fi
 }
 
@@ -152,7 +152,7 @@ AptGetInstall() {
     fi
 
     echo "Installing apt package(s) $@"
-    Retry sudo apt-get -y install "$@"
+    Retry apt-get -y install "$@"
 }
 
 DpkgCurlInstall() {
@@ -170,7 +170,7 @@ DpkgCurlInstall() {
     for rf in "$@"; do
         curl -OL ${rf}
         f=$(basename ${rf})
-        sudo dpkg -i ${f}
+        dpkg -i ${f}
         rm -v ${f}
     done
 }
