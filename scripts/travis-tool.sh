@@ -350,6 +350,11 @@ case $COMMAND in
         RBinaryInstall "$@"
         ;;
     ##
+    ## Install Pandoc
+    "install_pandoc")
+      InstallPandoc 'linux/debian/x86_64'
+        ;;
+    ##
     ## Install a package from github sources (needs devtools)
     "install_github"|"github_package")
         InstallGithub "$@"
