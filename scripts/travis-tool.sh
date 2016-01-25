@@ -15,14 +15,6 @@ PANDOC_VERSION='1.13.1'
 PANDOC_DIR="${HOME}/opt/pandoc"
 PANDOC_URL="https://s3.amazonaws.com/rstudio-buildtools/pandoc-${PANDOC_VERSION}.zip"
 
-# MacTeX installs in a new $PATH entry, and there's no way to force
-# the *parent* shell to source it from here. So we just manually add
-# all the entries to a location we already know to be on $PATH.
-#
-# TODO(craigcitro): Remove this once we can add `/usr/texbin` to the
-# root path.
-PATH="${PATH}:/usr/texbin"
-
 R_BUILD_ARGS=${R_BUILD_ARGS-"--no-manual"}
 R_CHECK_ARGS=${R_CHECK_ARGS-"--no-build-vignettes --no-manual --as-cran"}
 
@@ -32,120 +24,12 @@ R_USE_BIOC_CMDS="source('${BIOC}');"\
 " options(repos=biocinstallRepos());"
 
 Bootstrap() {
-    if [[ "Darwin" == "${OS}" ]]; then
-        BootstrapMac
-    elif [[ "Linux" == "${OS}" ]]; then
-        BootstrapLinux
-    else
-        echo "Unknown OS: ${OS}"
-        exit 1
-    fi
-
     if ! (test -e .Rbuildignore && grep -q 'travis-tool' .Rbuildignore); then
         echo '^travis-tool\.sh$' >>.Rbuildignore
     fi
 }
 
-InstallPandoc() {
-    local os_path="$1"
-    mkdir -p "${PANDOC_DIR}"
-    wget -O /tmp/pandoc-${PANDOC_VERSION}.zip ${PANDOC_URL}
-    unzip -j /tmp/pandoc-${PANDOC_VERSION}.zip "pandoc-${PANDOC_VERSION}/${os_path}/pandoc" -d "${PANDOC_DIR}"
-    chmod +x "${PANDOC_DIR}/pandoc"
-    ln -s "${PANDOC_DIR}/pandoc" /usr/local/bin
-    unzip -j /tmp/pandoc-${PANDOC_VERSION}.zip "pandoc-${PANDOC_VERSION}/${os_path}/pandoc-citeproc" -d "${PANDOC_DIR}"
-    chmod +x "${PANDOC_DIR}/pandoc-citeproc"
-    ln -s "${PANDOC_DIR}/pandoc-citeproc" /usr/local/bin
-}
-
-BootstrapLinux() {
-    # Set up our CRAN mirror.
-    add-apt-repository "deb ${CRAN}/bin/linux/ubuntu $(lsb_release -cs)/"
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
-
-    # Add marutter's c2d4u repository.
-    add-apt-repository -y "ppa:marutter/rrutter"
-    add-apt-repository -y "ppa:marutter/c2d4u"
-
-    # Update after adding all repositories.  Retry several times to work around
-    # flaky connection to Launchpad PPAs.
-    Retry apt-get update -qq
-
-    # Install an R development environment. qpdf is also needed for
-    # --as-cran checks:
-    #   https://stat.ethz.ch/pipermail/r-help//2012-September/335676.html
-    Retry apt-get install -y --no-install-recommends r-base-dev r-recommended qpdf
-
-    # Change permissions for /usr/local/lib/R/site-library
-    # This should really be via 'staff adduser travis staff'
-    # but that may affect only the next shell
-    chmod 2777 /usr/local/lib/R /usr/local/lib/R/site-library
-
-    # Process options
-    BootstrapLinuxOptions
-}
-
-BootstrapLinuxOptions() {
-    if [[ -n "$BOOTSTRAP_LATEX" ]]; then
-        # We add a backports PPA for more recent TeX packages.
-        add-apt-repository -y "ppa:texlive-backports/ppa"
-
-        Retry apt-get install -y --no-install-recommends \
-            texlive-base texlive-latex-base texlive-generic-recommended \
-            texlive-fonts-recommended texlive-fonts-extra \
-            texlive-extra-utils texlive-latex-recommended texlive-latex-extra \
-            texinfo lmodern
-    fi
-    if [[ -n "$BOOTSTRAP_PANDOC" ]]; then
-        InstallPandoc 'linux/debian/x86_64'
-    fi
-}
-
-BootstrapMac() {
-    # Install from latest CRAN binary build for OS X
-    wget ${CRAN}/bin/macosx/R-latest.pkg  -O /tmp/R-latest.pkg
-
-    echo "Installing OS X binary package for R"
-    installer -pkg "/tmp/R-latest.pkg" -target /
-    rm "/tmp/R-latest.pkg"
-
-    # Process options
-    BootstrapMacOptions
-}
-
-BootstrapMacOptions() {
-    if [[ -n "$BOOTSTRAP_LATEX" ]]; then
-        # TODO: Install MacTeX.pkg once there's enough disk space
-        MACTEX=BasicTeX.pkg
-        wget http://ctan.math.utah.edu/ctan/tex-archive/systems/mac/mactex/$MACTEX -O "/tmp/$MACTEX"
-
-        echo "Installing OS X binary package for MacTeX"
-        installer -pkg "/tmp/$MACTEX" -target /
-        rm "/tmp/$MACTEX"
-        # We need a few more packages than the basic package provides; this
-        # post saved me so much pain:
-        #   https://stat.ethz.ch/pipermail/r-sig-mac/2010-May/007399.html
-        tlmgr update --self
-        tlmgr install inconsolata upquote courier courier-scaled helvetic
-    fi
-    if [[ -n "$BOOTSTRAP_PANDOC" ]]; then
-        InstallPandoc 'mac'
-    fi
-}
-
-EnsureDevtools() {
-    if ! Rscript -e 'if (!("devtools" %in% rownames(installed.packages()))) q(status=1)' ; then
-        # Install devtools and testthat.
-        RBinaryInstall devtools testthat
-    fi
-}
-
 AptGetInstall() {
-    if [[ "Linux" != "${OS}" ]]; then
-        echo "Wrong OS: ${OS}"
-        exit 1
-    fi
-
     if [[ "" == "$*" ]]; then
         echo "No arguments to aptget_install"
         exit 1
@@ -215,20 +99,16 @@ RBinaryInstall() {
 }
 
 InstallGithub() {
-    EnsureDevtools
-
     echo "Installing GitHub packages: $@"
     # Install the package.
     Rscript -e 'library(devtools); library(methods); options(repos=c(CRAN="'"${CRAN}"'")); install_github(commandArgs(TRUE), build_vignettes = FALSE)' "$@"
 }
 
 InstallDeps() {
-    EnsureDevtools
     Rscript -e 'library(devtools); library(methods); options(repos=c(CRAN="'"${CRAN}"'")); install_deps(dependencies = TRUE)'
 }
 
 InstallBiocDeps() {
-    EnsureDevtools
     Rscript -e "${R_USE_BIOC_CMDS}"' library(devtools); install_deps(dependencies = TRUE)'
 }
 
@@ -320,11 +200,6 @@ case $COMMAND in
         Bootstrap
         ;;
     ##
-    ## Ensure devtools is loaded (implicitly called)
-    "install_devtools"|"devtools_install")
-        EnsureDevtools
-        ;;
-    ##
     ## Install a binary deb package via apt-get
     "install_aptget"|"aptget_install")
         AptGetInstall "$@"
@@ -348,11 +223,6 @@ case $COMMAND in
     ## Install an R dependency as a binary (via c2d4u PPA)
     "install_r_binary"|"r_binary_install")
         RBinaryInstall "$@"
-        ;;
-    ##
-    ## Install Pandoc
-    "install_pandoc")
-      InstallPandoc 'linux/debian/x86_64'
         ;;
     ##
     ## Install a package from github sources (needs devtools)
