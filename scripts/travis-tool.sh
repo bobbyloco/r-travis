@@ -49,7 +49,7 @@ Bootstrap() {
 InstallPandoc() {
     local os_path="$1"
     mkdir -p "${PANDOC_DIR}"
-    curl -o /tmp/pandoc-${PANDOC_VERSION}.zip ${PANDOC_URL}
+    wget /tmp/pandoc-${PANDOC_VERSION}.zip ${PANDOC_URL}
     unzip -j /tmp/pandoc-${PANDOC_VERSION}.zip "pandoc-${PANDOC_VERSION}/${os_path}/pandoc" -d "${PANDOC_DIR}"
     chmod +x "${PANDOC_DIR}/pandoc"
     ln -s "${PANDOC_DIR}/pandoc" /usr/local/bin
@@ -155,20 +155,20 @@ AptGetInstall() {
     Retry apt-get -y install "$@"
 }
 
-DpkgCurlInstall() {
+DpkgWgetInstall() {
     if [[ "Linux" != "${OS}" ]]; then
         echo "Wrong OS: ${OS}"
         exit 1
     fi
 
     if [[ "" == "$*" ]]; then
-        echo "No arguments to dpkgcurl_install"
+        echo "No arguments to dpkgwget_install"
         exit 1
     fi
 
     echo "Installing remote package(s) $@"
     for rf in "$@"; do
-        curl -OL ${rf}
+        wget ${rf}
         f=$(basename ${rf})
         dpkg -i ${f}
         rm -v ${f}
@@ -330,9 +330,9 @@ case $COMMAND in
         AptGetInstall "$@"
         ;;
     ##
-    ## Install a binary deb package via a curl call and local dpkg -i
-    "install_dpkgcurl"|"dpkgcurl_install")
-        DpkgCurlInstall "$@"
+    ## Install a binary deb package via a wget call and local dpkg -i
+    "install_dpkgwget"|"dpkgwget_install")
+        DpkgWgetInstall "$@"
         ;;
     ##
     ## Install an R dependency from CRAN
